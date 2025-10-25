@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>이노허브 클래스룸 예약</title>
+    <title>이노허브 클래스룸 예약 시스템</title>
     
     <!-- React 및 Babel CDN -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -22,6 +22,7 @@
                 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            background-color: #f3f4f6;
         }
         
         @keyframes spin {
@@ -229,7 +230,7 @@
                     }
                 } catch (error) {
                     console.error('데이터 로드 실패:', error);
-                    alert('데이터를 불러오는데 실패했습니다.');
+                    alert('데이터를 불러오는데 실패했습니다. 네트워크 연결을 확인하세요.');
                 } finally {
                     setLoading(false);
                 }
@@ -261,7 +262,7 @@
                     }
                 } catch (error) {
                     console.error('예약 제출 실패:', error);
-                    alert('예약 제출에 실패했습니다.');
+                    alert('예약 제출에 실패했습니다.\n\n에러: ' + error.message + '\n\n로컬 파일로 열었다면 웹 서버를 통해 실행해주세요.\n(python -m http.server 8000)');
                     return false;
                 }
             };
@@ -832,7 +833,7 @@
                 <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6' }}>
                     <header style={{ backgroundColor: '#2563eb', color: 'white', padding: '1rem', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)' }}>
                         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>🏫 이노허브 예약</h1>
+                            <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>🏫 이노허브 클래스룸 예약</h1>
                             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                 <button
                                     onClick={() => setCurrentView('myBookings')}
@@ -895,10 +896,10 @@
                                             <li>한 학생당 하나의 클래스룸만 예약 가능</li>
                                             <li>예약은 관리자 승인 후 확정됩니다</li>
                                             <li>Green Room: 4개 구역(GR1~GR4) 동시 이용 가능</li>
-                                            <li>Orange Room: 팀 프로젝트, 모니터</li>
+                                            <li>Orange Room: 팀 프로젝트, 모니터 제공</li>
                                             <li>Cozy Talk Zone: 아늑한 소파, 카페 분위기</li>
-                                            <li>E-sports: PC 3대(PC1~PC3) 동시 이용 가능</li>
-                                            <li>Duolingo Booth: 부스 2개(부스1~부스2) 동시 이용 가능</li>
+                                            <li>E-sports: PC 3대(PC1~PC3) 게이밍 환경</li>
+                                            <li>Duolingo Booth: 방음 부스 2개(부스1~부스2)</li>
                                         </ul>
                                     </div>
                                 </div>
@@ -942,7 +943,7 @@
                                                 </div>
                                                 <button
                                                     onClick={() => setSelectedRoom(room)}
-                                                    style={{ width: '100%', backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '0.75rem', borderRadius: '4px', cursor: 'pointer', fontSize: '1rem' }}
+                                                    style={{ width: '100%', backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '0.75rem', borderRadius: '4px', cursor: 'pointer', fontSize: '1rem', fontWeight: '500' }}
                                                 >
                                                     예약하기
                                                 </button>
