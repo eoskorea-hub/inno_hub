@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>이노허브 클래스룸 예약</title>
+    
+    <!-- React 및 Babel CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+                'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Lucide React 아이콘들을 간단한 SVG로 대체
+        const Calendar = ({ size = 24, ...props }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+        );
+
+        const Clock = ({ size = 24, ...props }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+        );
+
+        const Users = ({ size = 24, ...props }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+        );
+
+        const AlertCircle = ({ size = 24, ...props }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+        );
+
+        const CheckCircle = ({ size = 24, ...props }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+        );
+
+        const XCircle = ({ size = 24, ...props }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+        );
+
+        const Menu = ({ size = 24, ...props }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        );
+
+        const RefreshCw = ({ size = 24, className = '', ...props }) => (
+            <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+        );
+
+        const InnoHubBookingSystem = () => {
+            const [currentView, setCurrentView] = useState('booking');
+            const [selectedRoom, setSelectedRoom] = useState(null);
+            const [bookings, setBookings] = useState([]);
+            const [pendingBookings, setPendingBookings] = useState([]);
+            const [selectedDate] = useState(new Date().toISOString().split('T')[0]);
+            const [showMenu, setShowMenu] = useState(false);
+            const [loading, setLoading] = useState(false);
+
+            // ⚙️ Google Apps Script 웹앱 URL
+            const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz_usTQt--DqRGBYobpThZELtJOMQ1yXh2P6dov-3V6HZCrmFMuDsaMZNtggI6NhAC1/exec';
+
+            const rooms = [
+                {
+                    id: 'green',
+                    name: 'Green Room',
+                    capacity: '개인, 개인2인 이상',
+                    hours: '오후 1시 - 오후 8시',
+                    slotDuration: 1,
+                    image: '🌿',
+                    imageUrl: 'https://drive.google.com/uc?export=view&id=1eOYcRGYJmOlzR4RJgLRRSBGX22NFyyFa',
+                    description: 'Reading & Discussion 공간. 대형 스크린과 긴 테이블, 개별 칸막이가 구비된 집중 학습 공간입니다.',
+                    minPeople: 1,
+                    maxPeople: null,
+                    hasMultipleBooths: true,
+                    boothCount: 4,
+                    boothPrefix: 'GR',
+                    facilities: ['대형 스크린', '긴 테이블', '개별 칸막이', '화이트보드', '4개 구역(GR1-4)']
+                },
+                {
+                    id: 'orange',
+                    name: 'Orange Room',
+                    capacity: '그룹 3인이상',
+                    hours: '오후 1시 - 오후 8시',
+                    slotDuration: 1,
+                    image: '🍊',
+                    imageUrl: 'https://drive.google.com/uc?export=view&id=1DyfDTMi1mc8qcoQakXC5dR68sC10y5Tl',
+                    description: 'SSLDe Project 공간. 팀 프로젝트를 위한 소형 테이블 2개와 모니터가 있는 협업 공간입니다.',
+                    minPeople: 3,
+                    maxPeople: null,
+                    facilities: ['소형 테이블 2개', '모니터', '프로젝트 작업 공간']
+                },
+                {
+                    id: 'cozy',
+                    name: 'Cozy Talk Zone',
+                    capacity: '개인, 1-2인 그룹',
+                    hours: '오후 1시 - 오후 8시',
+                    slotDuration: 1,
+                    image: '🏠',
+                    imageUrl: 'https://drive.google.com/uc?export=view&id=1Wx5fhkEkO5CqJnkBlTpfhTg18X8rs-zI',
+                    description: '아늑한 카페형 공간. 집 모양 구조물 안 2개의 독립 부스, 소파 좌석과 원형 테이블로 편안한 학습 환경을 제공합니다.',
+                    minPeople: 1,
+                    maxPeople: 2,
+                    facilities: ['소파 좌석', '원형 테이블', '펜던트 조명', '아늑한 분위기']
+                },
+                {
+                    id: 'esports',
+                    name: 'E-sports',
+                    capacity: '개인',
+                    hours: '오후 3시 - 오후 8시',
+                    slotDuration: 2,
+                    image: '🎮',
+                    imageUrl: 'https://drive.google.com/uc?export=view&id=1a6ND6Hkxf6bDCrklGYUQb1sioKVD4Q8p',
+                    description: '프로급 게이밍 환경. 커브드 게이밍 모니터 3대, 고성능 게이밍 PC 3대를 갖춘 이스포츠 전용 스튜디오입니다.',
+                    minPeople: 1,
+                    maxPeople: 1,
+                    hasMultipleBooths: true,
+                    boothCount: 3,
+                    boothPrefix: 'PC',
+                    facilities: ['커브드 게이밍 모니터 3대', '고성능 게이밍 PC 3대', '게이밍 키보드/마우스', '게이밍 의자']
+                },
+                {
+                    id: 'duolingo',
+                    name: 'Duolingo Booth',
+                    capacity: '개인',
+                    hours: '오전 10시 - 오후 2시',
+                    slotDuration: 2,
+                    image: '📝',
+                    imageUrl: 'https://drive.google.com/uc?export=view&id=166-3hyB5x3B76nA-ndiZytwfp-NqAPbI',
+                    description: '독립된 방음 부스 2개. 듀오링고 영어 테스트를 위한 조용하고 집중된 환경을 제공합니다.',
+                    minPeople: 1,
+                    maxPeople: 1,
+                    hasMultipleBooths: true,
+                    boothCount: 2,
+                    boothPrefix: '부스',
+                    facilities: ['독립 방음 부스', '개인 책상', '인체공학 의자', '유리문 분리']
+                }
+            ];
+
+            // 예약 데이터 불러오기
+            const loadBookings = async () => {
+                setLoading(true);
+                try {
+                    const response = await fetch(`${APPS_SCRIPT_URL}?action=getBookings`);
+                    const data = await response.json();
+                    
+                    if (data.bookings) {
+                        const approved = data.bookings.filter(b => b.상태 === 'approved');
+                        const pending = data.bookings.filter(b => b.상태 === 'pending');
+                        
+                        const convertBooking = (booking) => ({
+                            id: booking.예약ID,
+                            timestamp: booking.타임스탬프,
+                            grade: booking.학년,
+                            name: booking.이름,
+                            phone: booking.전화번호,
+                            email: booking.이메일,
+                            roomId: booking.방ID,
+                            roomName: booking.방이름,
+                            date: booking.날짜,
+                            timeSlot: booking.시간대,
+                            numberOfPeople: booking.인원수,
+                            usageType: booking.이용형태,
+                            groupMembers: booking.그룹원 ? booking.그룹원.split(',').map(m => m.trim()) : [],
+                            boothNumber: booking.부스번호,
+                            purpose: booking.사용목적,
+                            status: booking.상태,
+                            adminNote: booking.관리자메모
+                        });
+                        
+                        setBookings(approved.map(convertBooking));
+                        setPendingBookings(pending.map(convertBooking));
+                    }
+                } catch (error) {
+                    console.error('데이터 로드 실패:', error);
+                    alert('데이터를 불러오는데 실패했습니다.');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            // 예약 제출
+            const submitBooking = async (formData) => {
+                try {
+                    const response = await fetch(APPS_SCRIPT_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            action: 'createBooking',
+                            ...formData
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        alert('예약이 제출되었습니다! 관리자 승인 후 확정됩니다.');
+                        loadBookings();
+                        return true;
+                    } else {
+                        alert('예약 제출 실패: ' + (result.error || '알 수 없는 오류'));
+                        return false;
+                    }
+                } catch (error) {
+                    console.error('예약 제출 실패:', error);
+                    alert('예약 제출에 실패했습니다.');
+                    return false;
+                }
+            };
+
+            useEffect(() => {
+                loadBookings();
+                const interval = setInterval(loadBookings, 30000);
+                return () => clearInterval(interval);
+            }, []);
+
+            const generateTimeSlots = (room) => {
+                const slots = [];
+                let startHour, endHour;
+                
+                if (room.id === 'duolingo') {
+                    startHour = 10;
+                    endHour = 14;
+                } else if (room.id === 'esports') {
+                    startHour = 15;
+                    endHour = 20;
+                } else {
+                    startHour = 13;
+                    endHour = 20;
+                }
+
+                for (let hour = startHour; hour < endHour; hour += room.slotDuration) {
+                    const endSlotHour = hour + room.slotDuration;
+                    const formatHour = (h) => h > 12 ? `오후 ${h - 12}시` : h === 12 ? '오후 12시' : `오전 ${h}시`;
+                    slots.push({
+                        start: `${hour}:00`,
+                        end: `${endSlotHour}:00`,
+                        display: `${formatHour(hour)} - ${formatHour(endSlotHour)}`
+                    });
+                }
+                
+                return slots;
+            };
+
+            const BookingForm = ({ room, onClose }) => {
+                const [formData, setFormData] = useState({
+                    grade: '',
+                    name: '',
+                    phone: '',
+                    email: '',
+                    numberOfPeople: room.minPeople || 1,
+                    timeSlot: '',
+                    date: selectedDate,
+                    boothNumber: room.hasMultipleBooths ? 1 : null,
+                    purpose: '',
+                    purposeOther: '',
+                    usageType: '개인이용',
+                    groupMembers: []
+                });
+                const [error, setError] = useState('');
+                const [submitting, setSubmitting] = useState(false);
+
+                const timeSlots = generateTimeSlots(room);
+
+                const handleSubmit = async () => {
+                    setError('');
+
+                    if (!formData.date || !formData.timeSlot || !formData.grade || !formData.name || 
+                        !formData.phone || !formData.email || !formData.numberOfPeople || !formData.purpose) {
+                        setError('모든 필드를 입력해주세요.');
+                        return;
+                    }
+
+                    if (formData.purpose === '기타' && !formData.purposeOther.trim()) {
+                        setError('사용 이유를 입력해주세요.');
+                        return;
+                    }
+
+                    if (formData.usageType === '그룹이용') {
+                        const filledMembers = formData.groupMembers.filter(name => name && name.trim());
+                        if (filledMembers.length !== formData.numberOfPeople - 1) {
+                            setError('모든 그룹원의 이름을 입력해주세요.');
+                            return;
+                        }
+                    }
+
+                    if (room.minPeople && formData.numberOfPeople < room.minPeople) {
+                        setError(`최소 ${room.minPeople}명 이상이어야 합니다.`);
+                        return;
+                    }
+                    if (room.maxPeople && formData.numberOfPeople > room.maxPeople) {
+                        setError(`최대 ${room.maxPeople}명까지 가능합니다.`);
+                        return;
+                    }
+
+                    const existingBooking = [...bookings, ...pendingBookings].find(
+                        b => b.email === formData.email && b.date === formData.date
+                    );
+                    
+                    if (existingBooking) {
+                        setError('이미 다른 클래스룸을 예약하셨습니다.');
+                        return;
+                    }
+
+                    setSubmitting(true);
+
+                    const bookingData = {
+                        ...formData,
+                        roomId: room.id,
+                        roomName: room.name,
+                        purpose: formData.purpose === '기타' ? formData.purposeOther : formData.purpose
+                    };
+
+                    const success = await submitBooking(bookingData);
+                    if (success) {
+                        onClose();
+                    }
+
+                    setSubmitting(false);
+                };
+
+                return (
+                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '1rem' }}>
+                        <div style={{ backgroundColor: 'white', borderRadius: '8px', maxWidth: '600px', width: '100%', maxHeight: '90vh', overflow: 'auto', padding: '1.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
+                                    {room.image} {room.name} 예약
+                                </h3>
+                                <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#6b7280' }}>×</button>
+                            </div>
+
+                            {error && (
+                                <div style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '0.75rem', borderRadius: '4px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <AlertCircle size={20} />
+                                    <span>{error}</span>
+                                </div>
+                            )}
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>학년 *</label>
+                                    <input
+                                        type="text"
+                                        value={formData.grade}
+                                        onChange={(e) => setFormData(prev => ({...prev, grade: e.target.value}))}
+                                        placeholder="예: 9학년"
+                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>이름 *</label>
+                                    <input
+                                        type="text"
+                                        value={formData.name}
+                                        onChange={(e) => setFormData(prev => ({...prev, name: e.target.value}))}
+                                        placeholder="홍길동"
+                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>전화번호 *</label>
+                                    <input
+                                        type="tel"
+                                        value={formData.phone}
+                                        onChange={(e) => setFormData(prev => ({...prev, phone: e.target.value}))}
+                                        placeholder="010-1234-5678"
+                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>이메일 *</label>
+                                    <input
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={(e) => setFormData(prev => ({...prev, email: e.target.value}))}
+                                        placeholder="example@eliteopenschool.org"
+                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>날짜 *</label>
+                                    <input
+                                        type="date"
+                                        value={formData.date}
+                                        onChange={(e) => setFormData(prev => ({...prev, date: e.target.value}))}
+                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>시간대 *</label>
+                                    <select
+                                        value={formData.timeSlot}
+                                        onChange={(e) => setFormData(prev => ({...prev, timeSlot: e.target.value}))}
+                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                                    >
+                                        <option value="">선택하세요</option>
+                                        {timeSlots.map(slot => (
+                                            <option key={slot.display} value={slot.display}>{slot.display}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {room.hasMultipleBooths && (
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>
+                                            {room.boothPrefix} 번호 *
+                                        </label>
+                                        <select
+                                            value={formData.boothNumber}
+                                            onChange={(e) => setFormData(prev => ({...prev, boothNumber: parseInt(e.target.value)}))}
+                                            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                                        >
+                                            {Array.from({length: room.boothCount}, (_, i) => i + 1).map(num => (
+                                                <option key={num} value={num}>{room.boothPrefix} {num}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>이용 형태 *</label>
+                                    <select
+                                        value={formData.usageType}
+                                        onChange={(e) => {
+                                            const newUsageType = e.target.value;
+                                            setFormData(prev => ({
+                                                ...prev, 
+                                                usageType: newUsageType,
+                                                numberOfPeople: newUsageType === '개인이용' ? 1 : (room.minPeople || 2),
+                                                groupMembers: newUsageType === '개인이용' ? [] : Array((room.minPeople || 2) - 1).fill('')
+                                            }));
+                                        }}
+                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                                    >
+                                        <option value="개인이용">개인이용</option>
+                                        <option value="그룹이용">그룹이용</option>
+                                    </select>
+                                </div>
+
+                                {formData.usageType === '그룹이용' && (
+                                    <>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>인원 수 *</label>
+                                            <input
+                                                type="number"
+                                                min={room.minPeople || 1}
+                                                max={room.maxPeople || 10}
+                                                value={formData.numberOfPeople}
+                                                onChange={(e) => {
+                                                    const newCount = parseInt(e.target.value) || 1;
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        numberOfPeople: newCount,
+                                                        groupMembers: Array(newCount - 1).fill('').map((_, i) => prev.groupMembers[i] || '')
+                                                    }));
+                                                }}
+                                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>
+                                                그룹원 이름 (본인 제외) *
+                                            </label>
+                                            {formData.groupMembers.map((member, index) => (
+                                                <input
+                                                    key={index}
+                                                    type="text"
+                                                    value={member}
+                                                    onChange={(e) => {
+                                                        const newMembers = [...formData.groupMembers];
+                                                        newMembers[index] = e.target.value;
+                                                        setFormData(prev => ({...prev, groupMembers: newMembers}));
+                                                    }}
+                                                    placeholder={`그룹원 ${index + 1} 이름`}
+                                                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px', marginBottom: '0.5rem' }}
+                                                />
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>사용 목적 *</label>
+                                    <select
+                                        value={formData.purpose}
+                                        onChange={(e) => setFormData(prev => ({...prev, purpose: e.target.value}))}
+                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                                    >
+                                        <option value="">선택하세요</option>
+                                        <option value="개인 학습">개인 학습</option>
+                                        <option value="팀 프로젝트">팀 프로젝트</option>
+                                        <option value="시험 준비">시험 준비</option>
+                                        <option value="토론/스터디">토론/스터디</option>
+                                        <option value="기타">기타</option>
+                                    </select>
+                                </div>
+
+                                {formData.purpose === '기타' && (
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>사용 이유 *</label>
+                                        <textarea
+                                            value={formData.purposeOther}
+                                            onChange={(e) => setFormData(prev => ({...prev, purposeOther: e.target.value}))}
+                                            placeholder="사용 목적을 입력해주세요"
+                                            rows={3}
+                                            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                                        />
+                                    </div>
+                                )}
+
+                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                    <button
+                                        onClick={handleSubmit}
+                                        disabled={submitting}
+                                        style={{
+                                            flex: 1,
+                                            backgroundColor: submitting ? '#9ca3af' : '#2563eb',
+                                            color: 'white',
+                                            border: 'none',
+                                            padding: '0.75rem',
+                                            borderRadius: '4px',
+                                            cursor: submitting ? 'not-allowed' : 'pointer',
+                                            fontWeight: '500'
+                                        }}
+                                    >
+                                        {submitting ? '제출 중...' : '예약 신청'}
+                                    </button>
+                                    <button
+                                        onClick={onClose}
+                                        disabled={submitting}
+                                        style={{
+                                            flex: 1,
+                                            backgroundColor: '#e5e7eb',
+                                            color: '#374151',
+                                            border: 'none',
+                                            padding: '0.75rem',
+                                            borderRadius: '4px',
+                                            cursor: submitting ? 'not-allowed' : 'pointer',
+                                            fontWeight: '500'
+                                        }}
+                                    >
+                                        취소
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const AdminPanel = () => {
+                return (
+                    <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '1.5rem', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>관리자 페이지</h2>
+                            <button
+                                onClick={loadBookings}
+                                disabled={loading}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    backgroundColor: '#2563eb',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: '0.5rem 1rem',
+                                    borderRadius: '4px',
+                                    cursor: loading ? 'not-allowed' : 'pointer'
+                                }}
+                            >
+                                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                                새로고침
+                            </button>
+                        </div>
+
+                        <div style={{ backgroundColor: '#fef3c7', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem' }}>
+                            <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>
+                                승인/거절 방법
+                            </h3>
+                            <ol style={{ fontSize: '0.875rem', lineHeight: '1.75', paddingLeft: '1.25rem' }}>
+                                <li>구글 스프레드시트를 엽니다</li>
+                                <li>"상태" 열에 다음 값을 입력:
+                                    <ul style={{ paddingLeft: '1.25rem', marginTop: '0.25rem' }}>
+                                        <li><strong>approved</strong> - 승인</li>
+                                        <li><strong>rejected</strong> - 거절</li>
+                                        <li><strong>pending</strong> - 대기</li>
+                                    </ul>
+                                </li>
+                                <li>"관리자메모" 열에 거절 사유나 메모를 남길 수 있습니다</li>
+                                <li>저장하면 자동으로 앱에 반영됩니다</li>
+                            </ol>
+                        </div>
+
+                        <div style={{ marginBottom: '2rem' }}>
+                            <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem', color: '#f59e0b' }}>
+                                승인 대기 ({pendingBookings.length})
+                            </h3>
+                            {pendingBookings.length === 0 ? (
+                                <p style={{ color: '#6b7280', textAlign: 'center', padding: '2rem' }}>승인 대기 중인 예약이 없습니다.</p>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    {pendingBookings.map(booking => {
+                                        const bookingRoom = rooms.find(r => r.id === booking.roomId);
+                                        const boothLabel = bookingRoom?.boothPrefix || '부스';
+                                        return (
+                                            <div key={booking.id} style={{ border: '1px solid #fbbf24', borderRadius: '8px', padding: '1rem', backgroundColor: '#fef3c7' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                                                    <div>
+                                                        <h4 style={{ fontWeight: '600', marginBottom: '0.25rem' }}>
+                                                            {booking.roomName}{booking.boothNumber && ` - ${boothLabel} ${booking.boothNumber}`}
+                                                        </h4>
+                                                        <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem', color: '#78716c' }}>
+                                                            <span>📅 {booking.date}</span>
+                                                            <span>⏰ {booking.timeSlot}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div style={{ fontSize: '0.875rem', lineHeight: '1.5' }}>
+                                                    <p><strong>이름:</strong> {booking.name} ({booking.grade})</p>
+                                                    <p><strong>연락처:</strong> {booking.phone}</p>
+                                                    <p><strong>이메일:</strong> {booking.email}</p>
+                                                    <p><strong>인원:</strong> {booking.numberOfPeople}명 - {booking.usageType}</p>
+                                                    {booking.usageType === '그룹이용' && booking.groupMembers && booking.groupMembers.length > 0 && (
+                                                        <p style={{ paddingLeft: '1rem', color: '#6b7280' }}>
+                                                            그룹원: {booking.groupMembers.filter(m => m).join(', ')}
+                                                        </p>
+                                                    )}
+                                                    <p><strong>목적:</strong> {booking.purpose}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
+                        <div>
+                            <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem', color: '#10b981' }}>
+                                승인된 예약 ({bookings.length})
+                            </h3>
+                            {bookings.length === 0 ? (
+                                <p style={{ color: '#6b7280', textAlign: 'center', padding: '2rem' }}>승인된 예약이 없습니다.</p>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    {bookings.map(booking => {
+                                        const bookingRoom = rooms.find(r => r.id === booking.roomId);
+                                        const boothLabel = bookingRoom?.boothPrefix || '부스';
+                                        return (
+                                            <div key={booking.id} style={{ border: '1px solid #10b981', borderRadius: '8px', padding: '1rem', backgroundColor: '#d1fae5' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                                                    <div>
+                                                        <h4 style={{ fontWeight: '600', marginBottom: '0.25rem' }}>
+                                                            {booking.roomName}{booking.boothNumber && ` - ${boothLabel} ${booking.boothNumber}`}
+                                                        </h4>
+                                                        <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem', color: '#78716c' }}>
+                                                            <span>📅 {booking.date}</span>
+                                                            <span>⏰ {booking.timeSlot}</span>
+                                                        </div>
+                                                    </div>
+                                                    <CheckCircle size={24} style={{ color: '#10b981' }} />
+                                                </div>
+                                                <div style={{ fontSize: '0.875rem', lineHeight: '1.5' }}>
+                                                    <p><strong>이름:</strong> {booking.name} ({booking.grade})</p>
+                                                    <p><strong>인원:</strong> {booking.numberOfPeople}명</p>
+                                                    <p><strong>목적:</strong> {booking.purpose}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            };
+
+            const MyBookings = () => {
+                const [searchEmail, setSearchEmail] = useState('');
+                const [userBookings, setUserBookings] = useState([]);
+
+                const handleSearch = () => {
+                    if (!searchEmail.trim()) {
+                        alert('이메일을 입력해주세요.');
+                        return;
+                    }
+
+                    const found = [...bookings, ...pendingBookings].filter(
+                        b => b.email && b.email.toLowerCase() === searchEmail.toLowerCase()
+                    );
+
+                    setUserBookings(found.sort((a, b) => new Date(b.date) - new Date(a.date)));
+
+                    if (found.length === 0) {
+                        alert('해당 이메일로 예약된 내역이 없습니다.');
+                    }
+                };
+
+                return (
+                    <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '1.5rem', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)' }}>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>내 예약 현황</h2>
+
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>
+                                이메일로 조회
+                            </label>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <input
+                                    type="email"
+                                    value={searchEmail}
+                                    onChange={(e) => setSearchEmail(e.target.value)}
+                                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                                    placeholder="example@eliteopenschool.org"
+                                    style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                                />
+                                <button
+                                    onClick={handleSearch}
+                                    style={{ backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer' }}
+                                >
+                                    조회
+                                </button>
+                            </div>
+                        </div>
+
+                        {userBookings.length > 0 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                {userBookings.map(booking => {
+                                    const bookingRoom = rooms.find(r => r.id === booking.roomId);
+                                    const boothLabel = bookingRoom?.boothPrefix || '부스';
+                                    const statusColor = booking.status === 'approved' ? '#10b981' : booking.status === 'rejected' ? '#ef4444' : '#f59e0b';
+                                    const statusBg = booking.status === 'approved' ? '#d1fae5' : booking.status === 'rejected' ? '#fee2e2' : '#fef3c7';
+                                    const statusText = booking.status === 'approved' ? '승인됨' : booking.status === 'rejected' ? '거절됨' : '승인 대기';
+
+                                    return (
+                                        <div key={booking.id} style={{ border: `1px solid ${statusColor}`, borderRadius: '8px', padding: '1rem', backgroundColor: statusBg }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                                <div>
+                                                    <h4 style={{ fontWeight: '600' }}>{booking.roomName}{booking.boothNumber && ` - ${boothLabel} ${booking.boothNumber}`}</h4>
+                                                    <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', borderRadius: '4px', backgroundColor: statusColor, color: 'white' }}>
+                                                        {statusText}
+                                                    </span>
+                                                </div>
+                                                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>{booking.date}</span>
+                                            </div>
+                                            <p style={{ fontSize: '0.875rem', marginBottom: '0.25rem' }}>📅 {booking.timeSlot}</p>
+                                            <p style={{ fontSize: '0.875rem', marginBottom: '0.25rem' }}>👥 {booking.numberOfPeople}명 - {booking.usageType}</p>
+                                            {booking.usageType === '그룹이용' && booking.groupMembers && booking.groupMembers.length > 0 && (
+                                                <p style={{ fontSize: '0.875rem', marginBottom: '0.25rem', paddingLeft: '1rem', color: '#6b7280' }}>
+                                                    그룹원: {booking.groupMembers.filter(m => m).join(', ')}
+                                                </p>
+                                            )}
+                                            <p style={{ fontSize: '0.875rem' }}>🎯 {booking.purpose}</p>
+                                            {booking.status === 'rejected' && booking.adminNote && (
+                                                <div style={{ marginTop: '0.75rem', padding: '0.75rem', backgroundColor: 'white', borderRadius: '4px' }}>
+                                                    <p style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.25rem' }}>거절 사유:</p>
+                                                    <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{booking.adminNote}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            return (
+                <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6' }}>
+                    <header style={{ backgroundColor: '#2563eb', color: 'white', padding: '1rem', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)' }}>
+                        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>🏫 이노허브 예약</h1>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <button
+                                    onClick={() => setCurrentView('myBookings')}
+                                    style={{
+                                        backgroundColor: currentView === 'myBookings' ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
+                                        color: 'white',
+                                        border: '1px solid white',
+                                        padding: '0.5rem 1rem',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        fontSize: '0.875rem',
+                                        fontWeight: '500'
+                                    }}
+                                >
+                                    내 예약 현황
+                                </button>
+                                <button 
+                                    onClick={() => setShowMenu(!showMenu)}
+                                    style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '0.5rem' }}
+                                >
+                                    <Menu size={24} />
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    {showMenu && (
+                        <nav style={{ background: 'white', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)', padding: '1rem' }}>
+                            <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <button
+                                    onClick={() => { setCurrentView('booking'); setShowMenu(false); }}
+                                    style={{ padding: '0.5rem 1rem', border: 'none', borderRadius: '4px', backgroundColor: currentView === 'booking' ? '#2563eb' : '#e5e7eb', color: currentView === 'booking' ? 'white' : 'black', cursor: 'pointer' }}
+                                >
+                                    예약하기
+                                </button>
+                                <button
+                                    onClick={() => { setCurrentView('myBookings'); setShowMenu(false); }}
+                                    style={{ padding: '0.5rem 1rem', border: 'none', borderRadius: '4px', backgroundColor: currentView === 'myBookings' ? '#2563eb' : '#e5e7eb', color: currentView === 'myBookings' ? 'white' : 'black', cursor: 'pointer' }}
+                                >
+                                    내 예약
+                                </button>
+                                <button
+                                    onClick={() => { setCurrentView('admin'); setShowMenu(false); }}
+                                    style={{ padding: '0.5rem 1rem', border: 'none', borderRadius: '4px', backgroundColor: currentView === 'admin' ? '#2563eb' : '#e5e7eb', color: currentView === 'admin' ? 'white' : 'black', cursor: 'pointer' }}
+                                >
+                                    관리자
+                                </button>
+                            </div>
+                        </nav>
+                    )}
+
+                    <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '1.5rem' }}>
+                        {currentView === 'booking' && (
+                            <div>
+                                <div style={{ backgroundColor: '#dbeafe', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                                    <AlertCircle size={20} style={{ color: '#2563eb', flexShrink: 0, marginTop: '0.125rem' }} />
+                                    <div style={{ fontSize: '0.875rem' }}>
+                                        <p style={{ fontWeight: '600', marginBottom: '0.5rem' }}>📋 예약 안내</p>
+                                        <ul style={{ listStyle: 'disc', paddingLeft: '1.25rem' }}>
+                                            <li>한 학생당 하나의 클래스룸만 예약 가능</li>
+                                            <li>예약은 관리자 승인 후 확정됩니다</li>
+                                            <li>Green Room: 4개 구역(GR1~GR4) 동시 이용 가능</li>
+                                            <li>Orange Room: 팀 프로젝트, 모니터</li>
+                                            <li>Cozy Talk Zone: 아늑한 소파, 카페 분위기</li>
+                                            <li>E-sports: PC 3대(PC1~PC3) 동시 이용 가능</li>
+                                            <li>Duolingo Booth: 부스 2개(부스1~부스2) 동시 이용 가능</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>클래스룸 선택</h2>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                                    {rooms.map(room => (
+                                        <div key={room.id} style={{ background: 'white', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)', overflow: 'hidden' }}>
+                                            {room.imageUrl && (
+                                                <div style={{ width: '100%', height: '192px', overflow: 'hidden', backgroundColor: '#f3f4f6' }}>
+                                                    <img src={room.imageUrl} alt={room.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                </div>
+                                            )}
+                                            <div style={{ padding: '1rem' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                                                    <span style={{ fontSize: '1.5rem' }}>{room.image}</span>
+                                                    <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold' }}>{room.name}</h3>
+                                                </div>
+                                                <div style={{ fontSize: '0.875rem', color: '#4b5563', marginBottom: '1rem' }}>
+                                                    <p style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                                        <Users size={16} />
+                                                        {room.capacity}
+                                                    </p>
+                                                    <p style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                                        <Clock size={16} />
+                                                        {room.hours}
+                                                    </p>
+                                                    <p style={{ fontSize: '0.75rem', lineHeight: '1.5', marginBottom: '0.75rem' }}>{room.description}</p>
+                                                    {room.facilities && (
+                                                        <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e5e7eb' }}>
+                                                            <p style={{ fontSize: '0.75rem', fontWeight: '600', marginBottom: '0.5rem' }}>시설:</p>
+                                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                                                                {room.facilities.map((facility, idx) => (
+                                                                    <span key={idx} style={{ fontSize: '0.75rem', backgroundColor: '#f3f4f6', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>
+                                                                        {facility}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <button
+                                                    onClick={() => setSelectedRoom(room)}
+                                                    style={{ width: '100%', backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '0.75rem', borderRadius: '4px', cursor: 'pointer', fontSize: '1rem' }}
+                                                >
+                                                    예약하기
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {currentView === 'admin' && <AdminPanel />}
+                        {currentView === 'myBookings' && <MyBookings />}
+                    </main>
+
+                    {selectedRoom && (
+                        <BookingForm room={selectedRoom} onClose={() => setSelectedRoom(null)} />
+                    )}
+                </div>
+            );
+        };
+
+        // React 앱 렌더링
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<InnoHubBookingSystem />);
+    </script>
+</body>
+</html>
